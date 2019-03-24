@@ -1,142 +1,73 @@
-
 module.exports = function solveSudoku(matrix) {
-  /**
-* Решение судоку
-*
-* Метод в цикле пытается решить судоку, если на текущем этапе не изменилось
-* ни одного элемента, то решение прекращается.
-*/
-function solve() {
-var changed = 0;
-do {
-// сужаем множество значений для всех нерешенных чисел
-changed = updateSuggests();
-steps++;
-if ( 81 < steps ) {
-// Зашита от цикла
-break;
-}
-} while (changed);
-}; // end of method solve()
+  // your solution
+  let unassigned_location;
+  if (unassigned_locations(matrix) == 0) {
+    //if there is no unassigned locations than it's done
+    return matrix;
+  }
+  else {
+    unassigned_location = unassigned_locations(matrix);
+  }
+  let row = unassigned_location[0];
+  let col = unassigned_location[1];
 
-/**
-* Обновляем множество предположений
-*
-* Проверяем основные правила -- уникальность в строке, столбце и секции.
-*/
-function updateSuggests() {
-var changed = 0;
-var buf = arrayDiff(solved[1][3][2], rowContent(1));
-buf = arrayDiff(buf, colContent(3));
-buf = arrayDiff(buf, sectContent(1, 3));
-for ( var i=0; i<9; i++) {
-for ( var j=0; j<9; j++) {
-if ( 'unknown' != solved[i][j][1] ) {
-  // Здесь решение либо найдено, либо задано
-  continue;
+  for (let num = 1; num < 10; num++) {
+    if (is_safe(matrix, row, col, num)) {
+      matrix[row][col] = num;
+      if (solveSudoku(matrix)) {
+        return matrix;
+      }
+      matrix[row][col] = 0; // if you didn't suceed with lowest possible number
+      //it assigns cells value to 0 so it will try with number higher
+    }
+  }
 }
-// "Одиночка"
-changed += solveSingle(i, j);
-// "Скрытый одиночка"
-changed += solveHiddenSingle(i, j);
+//checks if num is used in a row
+function used_in_row(matrix, num_of_row, num) {
+  if (matrix[num_of_row].indexOf(num) == -1) {
+    return false;
+  }
+  else {
+    return true;
+  }
 }
+//checks if num is used in a column
+function used_in_column(matrix, num_of_column, num) {
+  for (let row = 0; row < 9; row++) {
+    if (num == matrix[row][num_of_column]) {
+      return true;
+    }
+  }
+  return false;
 }
-return changed;
-}; // end of method updateSuggests()
-  /**
-* Метод "Одиночка"
-*/
-function solveSingle(i, j) {
-solved[i][j][2] = arrayDiff(solved[i][j][2], rowContent(i));
-solved[i][j][2] = arrayDiff(solved[i][j][2], colContent(j));
-solved[i][j][2] = arrayDiff(solved[i][j][2], sectContent(i, j));
-if ( 1 == solved[i][j][2].length ) {
-// Исключили все варианты кроме одного
-markSolved(i, j, solved[i][j][2][0]);
-return 1;
+//checks if num is used in a box 3x3
+function used_in_box(matrix, box_start_row, box_start_col, num) {
+  for (let row = 0 + box_start_row; row < 3 + box_start_row; row++) {
+    for (let col = 0 + box_start_col; col < 3 + box_start_col; col++) {
+      if (matrix[row][col] == num) {
+        return true;
+      }
+    }
+  }
+  return false;
 }
-return 0;
-}; // end of method solveSingle()
-  /**
-* Метод "Скрытый одиночка"
-*/
-function solveHiddenSingle(i, j) {
-var less_suggest = lessRowSuggest(i, j);
-var changed = 0;
-if ( 1 == less_suggest.length ) {
-markSolved(i, j, less_suggest[0]);
-changed++;
+//checks is it safe to place given number in given position
+function is_safe(matrix, num_of_row, num_of_column, num) {
+  return !used_in_row(matrix, num_of_row, num)
+    && !used_in_column(matrix, num_of_column, num)
+    && !used_in_box(matrix, num_of_row - num_of_row % 3, num_of_column - num_of_column % 3, num);
 }
-var less_suggest = lessColSuggest(i, j);
-if ( 1 == less_suggest.length ) {
-markSolved(i, j, less_suggest[0]);
-changed++;
-}
-var less_suggest = lessSectSuggest(i, j);
-if ( 1 == less_suggest.length ) {
-markSolved(i, j, less_suggest[0]);
-changed++;
-}
-return changed;
-}; // end of method solveHiddenSingle()
+//finds unassigned location
+function unassigned_locations(matrix) {
+  //let array_of_unassigned_locations = [];
+  for (let row = 0; row < 9; row++) {
+    for (let col = 0; col < 9; col++) {
+      if (matrix[row][col] == 0) {
+        return [row, col];
+        //array_of_unassigned_locations.push([row, col]);
 
-/**
-* Минимизированное множество предположений по строке
-*/
-function lessRowSuggest(i, j) {
-var less_suggest = solved[i][j][2];
-for ( var k=0; k<9; k++ ) {
-if ( k == j || 'unknown' != solved[i][k][1] ) {
-continue;
-}
-less_suggest = arrayDiff(less_suggest, solved[i][k][2]);
-}
-return less_suggest;
-}; // end of method lessRowSuggest()
-
-/**
-* Минимизированное множество предположений по столбцу
-*/
-function lessColSuggest(i, j) {
-var less_suggest = solved[i][j][2];
-for ( var k=0; k<9; k++ ) {
-if ( k == i || 'unknown' != solved[k][j][1] ) {
-continue;
-}
-less_suggest = arrayDiff(less_suggest, solved[k][j][2]);
-}
-return less_suggest;
-}; // end of method lessColSuggest()
-
-/**
-* Минимизированное множество предположений по секции
-*/
-function lessSectSuggest(i, j) {
-var less_suggest = solved[i][j][2];
-var offset = sectOffset(i, j);
-for ( var k=0; k<3; k++ ) {
-for ( var l=0; l<3; l++ ) {
-if ( ((offset.i+k) == i && (offset.j+l) == j)|| 'unknown' != solved[offset.i+k][offset.j+l][1] ) {
-  continue;
-}
-less_suggest = arrayDiff(less_suggest, solved[offset.i+k][offset.j+l][2]);
-}
-}
-return less_suggest;
-};
- // end of method lessSectSuggest()
-  var in_val =([
-    [ 5 , 3 , 4 , 6 , 7 , 8 , 9 , 0 , 0 ],
-    [ 6 , 7 , 2 , 1 , 9 , 5 , 3 , 4 , 8 ],
-    [ 1 , 9 , 8 , 3 , 4 , 2 , 5 , 6 , 7 ],
-    [ 8 , 5 , 9 , 7 , 6 , 1 , 4 , 2 , 3 ],
-    [ 4 , 2 , 6 , 8 , 5 , 3 , 7 , 9 , 1 ],
-    [ 7 , 1 , 3 , 9 , 2 , 4 , 8 , 5 , 6 ],
-    [ 9 , 6 , 1 , 5 , 3 , 7 , 2 , 8 , 4 ],
-    [ 2 , 8 , 7 , 4 , 1 , 9 , 6 , 3 , 5 ],
-    [ 3 , 4 , 5 , 2 , 8 , 6 , 1 , 7 , 9 ]
-  ]);
- 
-var sudoku = new Sudoku(in_val);
-document.write(sudoku.html());
+      }
+    }
+  }
+  return 0;
 }
